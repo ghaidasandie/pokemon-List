@@ -4,7 +4,7 @@ public class Pokemon {
     private String name;
     private String url;
 
-    // Getter dan Setter
+    // Getter and Setter
     public String getName() {
         return name;
     }

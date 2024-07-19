@@ -8,7 +8,7 @@ public class PokemonResponse {
     private String previous;
     private List<Pokemon> results;
 
-    // Getter dan Setter
+    // Getter and Setter
     public int getCount() {
         return count;
     }
