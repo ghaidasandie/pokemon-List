@@ -10,9 +10,14 @@ import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import javax.imageio.ImageIO;
 
 public class PokemonApp {
     private static final String POKE_API_URL = "https://pokeapi.co/api/v2/pokemon?limit=30&offset=0";
@@ -79,15 +84,20 @@ public class PokemonApp {
         new Thread(() -> {
             try {
                 String details = fetchPokemonDetails(name);
+                int id = fetchPokemonId(name);
+                ImageIcon pokemonImage = fetchPokemonImage(id);
                 SwingUtilities.invokeLater(() -> {
                     JFrame detailFrame = new JFrame("Detail Pokemon: " + name);
-                    detailFrame.setSize(300, 200);
+                    detailFrame.setSize(300, 400);
                     JTextArea detailTextArea = new JTextArea(details);
-                    detailTextArea.setEditable(false);
-                    detailFrame.add(new JScrollPane(detailTextArea), BorderLayout.CENTER);
+                    JLabel imageLabel = new JLabel(pokemonImage);
+                    JPanel panel = new JPanel(new BorderLayout());
+                    panel.add(imageLabel, BorderLayout.NORTH);
+                    panel.add(new JScrollPane(detailTextArea), BorderLayout.CENTER);
+                    detailFrame.add(panel);
                     detailFrame.setVisible(true);
                 });
-            } catch (IOException e) {
+            } catch (IOException | URISyntaxException e) {
                 e.printStackTrace();
             }
         }).start();
@@ -109,11 +119,36 @@ public class PokemonApp {
                 details.append(type.getType().getName()).append(" ");
             }
             details.append("\n");
-            details.append("Height: ").append(pokemonDetail.getHeight()).append(" decimetres\n");
-            details.append("Weight: ").append(pokemonDetail.getWeight()).append(" hectograms\n");
+            details.append("Height: ").append(pokemonDetail.getHeight() * 10).append(" cm\n");
+            details.append("Weight: ").append(pokemonDetail.getWeight() / 10.0).append(" kg\n");
 
             return details.toString();
         }
+    }
+
+    private static int fetchPokemonId(String name) throws IOException {
+        String url = "https://pokeapi.co/api/v2/pokemon-species/" + name.toLowerCase();
+        Request request = new Request.Builder().url(url).build();
+
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+
+            PokemonDetail pokemonDetail = mapper.readValue(response.body().string(), PokemonDetail.class);
+
+            return pokemonDetail.getId(); 
+        }
+    }
+
+    
+    private static ImageIcon fetchPokemonImage(int id) throws IOException, URISyntaxException {
+        String url = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/" + id + ".png";
+        System.out.println("Fetching image from URL: " + url); 
+        
+        URI uri = new URI(url);
+        URL urlObj = uri.toURL();
+        BufferedImage img = ImageIO.read(urlObj);
+        Image scaledImg = img.getScaledInstance(150, 150, Image.SCALE_SMOOTH); 
+        return new ImageIcon(scaledImg);
     }
 
     private static void handleFetchError(JFrame frame) {
